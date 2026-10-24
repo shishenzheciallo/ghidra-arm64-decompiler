@@ -1,0 +1,4 @@
+ghidra-src/
+*.tgz
+*.o
+ghidra_opt

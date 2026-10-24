@@ -1,0 +1,12 @@
+This distribution contains a build product (dist/decompile) of the Ghidra
+decompiler, part of Ghidra:
+
+  Ghidra, Copyright (c) 1999-2026 National Security Agency.
+  Licensed under the Apache License, Version 2.0.
+  https://github.com/NationalSecurityAgency/ghidra
+
+Built from the unmodified source tag Ghidra_12.1.4_build, file set
+Ghidra/Features/Decompiler/src/decompile/cpp, target ghidra_opt,
+architecture aarch64, by the user who published this repository.
+
+No Ghidra source files were modified.
