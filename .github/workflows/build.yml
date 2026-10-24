@@ -1,0 +1,85 @@
+name: build arm64 decompiler
+
+on:
+  workflow_dispatch:
+    inputs:
+      ghidra_tag:
+        description: "Ghidra release tag (e.g. Ghidra_12.1.4_build)"
+        required: true
+        default: "Ghidra_12.1.4_build"
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    # Native arm64 runner: cross-compiling the decompiler is not supported.
+    # If this label is unavailable for your plan, use a self-hosted arm64 runner
+    # with the same labels.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve Ghidra tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.ghidra_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            # release tags look like v12.1.4 -> Ghidra_12.1.4_build
+            v="${GITHUB_REF_NAME#v}"
+            echo "tag=Ghidra_${v}_build" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang make bison flex zlib1g-dev curl ca-certificates file
+
+      - name: Cache Ghidra sources
+        uses: actions/cache@v4
+        with:
+          path: ghidra-src
+          key: ghidra-src-${{ steps.tag.outputs.tag }}
+
+      - name: Build
+        run: |
+          ./scripts/build.sh ./ghidra-src
+        env:
+          CXX_BIN: clang++
+
+      - name: Verify artifact
+        run: |
+          file dist/decompile
+          file dist/decompile | grep -q "ARM aarch64" || { echo "not an aarch64 binary"; exit 1; }
+          ls -l dist/decompile
+          echo "sha256=$(sha256sum dist/decompile | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+        id: verify
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: decompile-linux-arm64-${{ steps.tag.outputs.tag }}
+          path: dist/decompile
+          if-no-files-found: error
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(sha256sum dist/decompile | cut -d' ' -f1)
+          echo "$sha" > /tmp/decompile-linux-arm64.sha256
+          gh release create "$GITHUB_REF_NAME" \
+            --title "Ghidra decompiler for linux/arm64 ($GITHUB_REF_NAME)" \
+            --notes "Prebuilt \`decompile\` binary for Linux aarch64, built from ${{ steps.tag.outputs.tag }}." \
+            "dist/decompile#decompile-linux-arm64" \
+            "/tmp/decompile-linux-arm64.sha256#decompile-linux-arm64.sha256" \
+            || gh release upload "$GITHUB_REF_NAME" \
+                 "dist/decompile#decompile-linux-arm64" \
+                 "/tmp/decompile-linux-arm64.sha256#decompile-linux-arm64.sha256" --clobber
