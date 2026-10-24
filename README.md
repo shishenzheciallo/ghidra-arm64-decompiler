@@ -105,6 +105,21 @@ random internal compiler errors (`version.h:48: internal compiler error:
 Segmentation fault`) on the same file that succeeded a minute earlier. clang 18
 compiled all 78 translation units on the first pass.
 
+## CI
+
+`.github/workflows/build.yml` builds this on a native arm64 runner
+(`ubuntu-24.04-arm`), so a new Ghidra release only needs a trigger:
+
+- **workflow_dispatch** — pass any `Ghidra_<version>_build` tag, artifact is
+  uploaded to the run
+- **push a `v<version>` tag** — builds and attaches the binary to a GitHub
+  release automatically
+
+The source tree is cached per tag, so repeat builds skip the ~80 MB download.
+Cross-compilation is not an option here: the decompiler links against the host
+`libstdc++`/glibc and Ghidra loads it as a native child process of the platform
+it runs on, so the build must happen on the same architecture that runs it.
+
 ## License
 
 The decompiler sources are part of Ghidra, Copyright (c) 1999-2026
