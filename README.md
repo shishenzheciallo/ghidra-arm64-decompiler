@@ -120,6 +120,11 @@ Cross-compilation is not an option here: the decompiler links against the host
 `libstdc++`/glibc and Ghidra loads it as a native child process of the platform
 it runs on, so the build must happen on the same architecture that runs it.
 
+Builds are **not bit-reproducible** across hosts: the binary links against the
+toolchain and glibc of the machine that produced it, so a CI artifact and a
+locally built one differ in size and hash while behaving identically. Pin the
+sha256 from the release you actually deploy.
+
 ## License
 
 The decompiler sources are part of Ghidra, Copyright (c) 1999-2026
